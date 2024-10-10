@@ -58,7 +58,6 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
 
         calculation_information = HelicsCalculationInformation(
             time_period_in_seconds=heatpump_period_in_seconds,
-            time_request_type=TimeRequestType.ON_INPUT,
             offset=0, 
             uninterruptible=False, 
             wait_for_current_time_update=False, 
@@ -103,7 +102,7 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
 
         heatpump_update_period_in_seconds = 900
 
-        calculation_information_update = HelicsCalculationInformation(heatpump_update_period_in_seconds, TimeRequestType.ON_INPUT, 0, False, False, True, "update_temperatures", subscriptions_values, [], self.update_temperatures)
+        calculation_information_update = HelicsCalculationInformation(heatpump_update_period_in_seconds, 0, False, False, True, "update_temperatures", subscriptions_values, [], self.update_temperatures)
         self.add_calculation(calculation_information_update)
 
     # def get_building_of_hp(self, esdl_id : EsdlId, energy_system: esdl.EnergySystem):
