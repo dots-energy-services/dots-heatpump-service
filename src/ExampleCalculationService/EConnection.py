@@ -160,13 +160,13 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         # START user calc
         LOGGER.info("calculation 'send_temperatures' started")
         # LOGGER.info(param_dict)
-        LOGGER.info(get_vector_param_with_name(param_dict, "predicted_air_temperatures")[0][0])
+        LOGGER.info(get_vector_param_with_name(param_dict, "air_temperature")[0][0])
         # # Calculation(s) per ESDL object
         # temperatures_dict: dict[EsdlId, Temperatures] = {}
 
-        predicted_solar_irradiances = get_vector_param_with_name(param_dict, "predicted_solar_irradiances")[0]
-        predicted_air_temperatures = get_vector_param_with_name(param_dict, "predicted_air_temperatures")[0]
-        predicted_soil_temperatures = get_vector_param_with_name(param_dict, "predicted_soil_temperatures")[0]
+        predicted_solar_irradiances = get_vector_param_with_name(param_dict, "solar_irradiance")[0]
+        predicted_air_temperatures = get_vector_param_with_name(param_dict, "air_temperature")[0]
+        predicted_soil_temperatures = get_vector_param_with_name(param_dict, "soil_temperature")[0]
 
         # Check if the house and tank temperatures are properly initialized
         house = self.houses[esdl_id]
@@ -204,9 +204,9 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         # START user calc
         LOGGER.info("calculation 'update_temperatures' started")
 
-        predicted_solar_irradiances = get_vector_param_with_name(param_dict, "predicted_solar_irradiances")[0]
-        predicted_air_temperatures = get_vector_param_with_name(param_dict, "predicted_air_temperatures")[0]
-        predicted_soil_temperatures = get_vector_param_with_name(param_dict, "predicted_soil_temperatures")[0]
+        predicted_solar_irradiances = get_vector_param_with_name(param_dict, "solar_irradiance")[0]
+        predicted_air_temperatures = get_vector_param_with_name(param_dict, "air_temperature")[0]
+        predicted_soil_temperatures = get_vector_param_with_name(param_dict, "soil_temperature")[0]
         heat_to_dhw_tank = get_vector_param_with_name(param_dict, "heat_power_to_tank_dhw")[0]
         heat_to_dhw = get_vector_param_with_name(param_dict, "heat_power_to_dhw")[0]
         heat_to_buffer = get_vector_param_with_name(param_dict, "heat_power_to_buffer")[0]
