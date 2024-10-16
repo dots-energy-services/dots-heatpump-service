@@ -195,6 +195,7 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         ret_val["dhw_temperature"]      = dhw_tank.temperature
         ret_val["buffer_temperature"]   = buffer.temperature
         ret_val["house_temperatures"]   = house.temperatures
+        LOGGER.info(f"House temperatures: {house.temperatures}")
 
         print(dhw_tank.temperature, buffer.temperature, house.temperatures)
         # self.influx_connector.set_time_step_data_point(esdl_id, "EConnectionDispatch", simulation_time, ret_val["EConnectionDispatch"])
