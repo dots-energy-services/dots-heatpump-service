@@ -197,7 +197,7 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         ret_val = {}
         ret_val["dhw_temperature"]      = dhw_tank.temperature
         ret_val["buffer_temperature"]   = buffer.temperature
-        ret_val["house_temperatures"]   = house.temperatures
+        ret_val["house_temperatures"]   = house_temperatures_list
         LOGGER.info(f"House temperatures: {house.temperatures}")
 
         print(dhw_tank.temperature, buffer.temperature, house.temperatures)
