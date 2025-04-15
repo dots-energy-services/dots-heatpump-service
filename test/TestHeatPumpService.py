@@ -1,21 +1,19 @@
 from datetime import datetime
 import unittest
 from heatpumpservice.heatpumpservice import CalculationServiceHeatPump
-from dots_infrastructure.DataClasses import SimulatorConfiguration, SimulaitonDataPoint, TimeStepInformation
+from dots_infrastructure.DataClasses import SimulatorConfiguration, TimeStepInformation
 from dots_infrastructure.test_infra.InfluxDBMock import InfluxDBMock
 import helics as h
 from esdl.esdl_handler import EnergySystemHandler
 
 from dots_infrastructure import CalculationServiceHelperFunctions
-from esdl_parser import get_energy_system
-
 
 BROKER_TEST_PORT = 23404
 START_DATE_TIME = datetime(2024, 1, 1, 0, 0, 0)
 SIMULATION_DURATION_IN_SECONDS = 960
 
 def simulator_environment_e_connection():
-    return SimulatorConfiguration("EConnection", ["355e0f39-75ee-43e7-9197-52f0919ff6c9"], "Mock-Econnection", "127.0.0.1", BROKER_TEST_PORT, "355e0f39-75ee-43e7-9197-52f0919ff6c9", SIMULATION_DURATION_IN_SECONDS, START_DATE_TIME, "test-host", "test-port", "test-username", "test-password", "test-database-name", h.HelicsLogLevel.DEBUG, ["PVInstallation", "EConnection"])
+    return SimulatorConfiguration("EConnection", ["ee3795bd-878c-4b89-9e32-5fc4c74816ce"], "Mock-Econnection", "127.0.0.1", BROKER_TEST_PORT, "ee3795bd-878c-4b89-9e32-5fc4c74816ce", SIMULATION_DURATION_IN_SECONDS, START_DATE_TIME, "test-host", "test-port", "test-username", "test-password", "test-database-name", h.HelicsLogLevel.DEBUG, ["PVInstallation", "EConnection"])
 
 class Test(unittest.TestCase):
 
@@ -40,12 +38,6 @@ class Test(unittest.TestCase):
 
         # Execute
         ret_val = service.send_temperatures(weather_params, datetime(2024,1,1), TimeStepInformation(1,2), "ee3795bd-878c-4b89-9e32-5fc4c74816ce", self.energy_system)
-
-
-        #
-        # # Implement
-        # self.assertEqual(ret_val["EConnectionDispatch"], 3.0)
-        # self.assertListEqual([SimulaitonDataPoint("EConnectionDispatch", datetime(2024,1,1), 3.0, "test-id")], service.influx_connector.data_points)
 
 if __name__ == '__main__':
     unittest.main()
