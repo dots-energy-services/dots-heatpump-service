@@ -2,8 +2,8 @@
 from datetime import datetime
 from esdl import esdl
 import helics as h
-import logging
-from dots_infrastructure.DataClasses import EsdlId, HelicsCalculationInformation, PublicationDescription, SubscriptionDescription, TimeStepInformation, TimeRequestType
+
+from dots_infrastructure.DataClasses import EsdlId, HelicsCalculationInformation, PublicationDescription, SubscriptionDescription, TimeStepInformation
 from dots_infrastructure.HelicsFederateHelpers import HelicsSimulationExecutor
 from dots_infrastructure.Logger import LOGGER
 from esdl import EnergySystem
@@ -11,7 +11,7 @@ from dots_infrastructure.CalculationServiceHelperFunctions import get_vector_par
 
 import json
 import numpy as np
-from ExampleCalculationService.thermalsystems import House, HeatBuffer, objectfunctions
+from heatpumpservice.thermalsystems import House, HeatBuffer
 
 
 
@@ -105,12 +105,6 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         calculation_information_update = HelicsCalculationInformation(heatpump_update_period_in_seconds, 0, False, False, True, "update_temperatures", subscriptions_values, [], self.update_temperatures)
         self.add_calculation(calculation_information_update)
 
-    # def get_building_of_hp(self, esdl_id : EsdlId, energy_system: esdl.EnergySystem):
-    #     for obj in energy_system.eAllContents():
-    #         if hasattr(obj, "id") and obj.id == esdl_id:
-    #             assert isinstance(obj.eContainer(), esdl.Building), f"Container of asset {esdl_id} is not a building"
-    #             return obj.eContainer()
-
     def init_calculation_service(self, energy_system: esdl.EnergySystem):
         LOGGER.info("init calculation service")
         self.hp_description_dicts: dict[EsdlId, dict[str, float]] = {}
@@ -123,13 +117,8 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         self.inv_capacitance_matrices: dict[EsdlId, np.array] = {}
         self.conductance_matrices: dict[EsdlId, np.array] = {}
         self.forcing_matrices: dict[EsdlId, np.array] = {}
-        # In other functions
-        self.buffer_temperatures: dict[EsdlId, float] = {}
-        self.house_temperatures: dict[EsdlId, List[float]] = {}
 
         for esdl_id in self.simulator_configuration.esdl_ids:
-            LOGGER.info(f"Example of iterating over esdl ids: {esdl_id}")
-
             # Initialize heat tanks and houses
             # Get data from ESDL
             for obj in energy_system.eAllContents():
@@ -160,7 +149,7 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         # START user calc
         LOGGER.info("calculation 'send_temperatures' started")
         # LOGGER.info(param_dict)
-        LOGGER.info(get_vector_param_with_name(param_dict, "air_temperature")[0][0])
+        LOGGER.debug(get_vector_param_with_name(param_dict, "air_temperature")[0][0])
         # # Calculation(s) per ESDL object
         # temperatures_dict: dict[EsdlId, Temperatures] = {}
 
@@ -194,7 +183,7 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
             house_temperatures_list = house.temperatures.tolist()
         else:
             house_temperatures_list = house.temperatures
-            # print(house_temperatures_list, type(house_temperatures_list[0]))
+
 
         ret_val = {}
         ret_val["dhw_temperature"]      = dhw_tank.temperature
@@ -203,7 +192,6 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         LOGGER.info(f"House temperatures: {house.temperatures}")
 
         print(dhw_tank.temperature, buffer.temperature, house.temperatures)
-        # self.influx_connector.set_time_step_data_point(esdl_id, "EConnectionDispatch", simulation_time, ret_val["EConnectionDispatch"])
         return ret_val
     
     def update_temperatures(self, param_dict : dict, simulation_time : datetime, time_step_number : TimeStepInformation, esdl_id : EsdlId, energy_system : EnergySystem):
@@ -226,17 +214,15 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         buffer = self.buffers[esdl_id]
         house = self.houses[esdl_id]
 
-        # hp_description_dict = self.hp_description_dicts[esdl_id]
+        LOGGER.debug(f"esdl id: {esdl_id}")
+        LOGGER.debug(f"dhw temperature before: {dhw_tank.temperature}")
+        LOGGER.debug(f"buffer temperature before: {buffer.temperature}")
+        LOGGER.debug(f"house temperatures before: {house.temperatures}")
 
-        LOGGER.info(f"esdl id: {esdl_id}")
-        LOGGER.info(f"dhw temperature before: {dhw_tank.temperature}")
-        LOGGER.info(f"buffer temperature before: {buffer.temperature}")
-        LOGGER.info(f"house temperatures before: {house.temperatures}")
-
-        LOGGER.info(f"heat to dhw: {heat_to_dhw}")
-        LOGGER.info(f"heat to dhw tank: {heat_to_dhw_tank}")
-        LOGGER.info(f"heat to house: {heat_to_house}")
-        LOGGER.info(f"heat to buffer: {heat_to_buffer}")
+        LOGGER.debug(f"heat to dhw: {heat_to_dhw}")
+        LOGGER.debug(f"heat to dhw tank: {heat_to_dhw_tank}")
+        LOGGER.debug(f"heat to house: {heat_to_house}")
+        LOGGER.debug(f"heat to buffer: {heat_to_buffer}")
 
         # Update temperatures
         dhw_tank.update_temperature(self.heatpump_period_in_seconds,
@@ -295,22 +281,14 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         self.buffers[esdl_id] = buffer
         self.houses[esdl_id] = house
 
-        # # Write to influx
-        # time_step_nr = int(new_step.parameters_dict['time_step_nr'])
-        # self.influxdb_client.set_time_step_data_point(esdl_id, 'dhw_tank_temperature',
-        #                                               time_step_nr, dhw_tank_temperature)
-        # self.influxdb_client.set_time_step_data_point(esdl_id, 'buffer_temperature',
-        #                                               time_step_nr, buffer_temperature)
-        # self.influxdb_client.set_time_step_data_point(esdl_id, 'house_temperature',
-        #                                               time_step_nr, house_temperatures[0])
+        # Write to influx
         self.influx_connector.set_time_step_data_point(esdl_id, 'dhw_tank_temperature',
                                                       simulation_time, dhw_tank_temperature)
         self.influx_connector.set_time_step_data_point(esdl_id, 'buffer_temperature',
                                                       simulation_time, buffer_temperature)
         self.influx_connector.set_time_step_data_point(esdl_id, 'house_temperature',
                                                       simulation_time, house_temperatures[0])
-        # if time_step_nr == self.nr_of_time_steps:
-        #     self.influxdb_client.set_summary_data_point(esdl_id, 'summary_check', 1)
+
         LOGGER.info("calculation 'update_temperatures' finished")
 
         ret_val = {}
