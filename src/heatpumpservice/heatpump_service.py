@@ -11,7 +11,8 @@ from dots_infrastructure.CalculationServiceHelperFunctions import get_vector_par
 
 import json
 import numpy as np
-from heatpumpservice.thermalsystems import House, HeatBuffer
+
+from heatpumpservice.thermalsystems import HeatBuffer, House
 
 
 
@@ -148,10 +149,7 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
     def send_temperatures(self, param_dict : dict, simulation_time : datetime, time_step_number : TimeStepInformation, esdl_id : EsdlId, energy_system : EnergySystem):
         # START user calc
         LOGGER.info("calculation 'send_temperatures' started")
-        # LOGGER.info(param_dict)
-        LOGGER.debug(get_vector_param_with_name(param_dict, "air_temperature")[0][0])
-        # # Calculation(s) per ESDL object
-        # temperatures_dict: dict[EsdlId, Temperatures] = {}
+        LOGGER.debug(get_vector_param_with_name(param_dict, "air_temperature")[0])
 
         predicted_solar_irradiances = get_vector_param_with_name(param_dict, "solar_irradiance")[0]
         predicted_air_temperatures = get_vector_param_with_name(param_dict, "air_temperature")[0]
@@ -191,7 +189,6 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         ret_val["house_temperatures"]   = house_temperatures_list
         LOGGER.info(f"House temperatures: {house.temperatures}")
 
-        print(dhw_tank.temperature, buffer.temperature, house.temperatures)
         return ret_val
     
     def update_temperatures(self, param_dict : dict, simulation_time : datetime, time_step_number : TimeStepInformation, esdl_id : EsdlId, energy_system : EnergySystem):

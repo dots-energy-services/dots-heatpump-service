@@ -12,4 +12,4 @@ COPY requirements.txt ./
 RUN pip install -r requirements.txt
 RUN pip install ./
 
-ENTRYPOINT python3 src/heatpumpservice/heatpumpservice.py
+ENTRYPOINT python3 src/heatpumpservice/heatpump_service.py
