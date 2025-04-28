@@ -107,7 +107,6 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         self.add_calculation(calculation_information_update)
 
     def init_calculation_service(self, energy_system: esdl.EnergySystem):
-        LOGGER.info("init calculation service")
         self.hp_description_dicts: dict[EsdlId, dict[str, float]] = {}
         self.hp_esdl_power: dict[EsdlId, float] = {}
 
@@ -135,7 +134,7 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
             dhw_capacitance = self.hp_description_dicts[esdl_id]['dhw_capacitance']
             self.buffers[esdl_id] = HeatBuffer(buffer_capacitance)
             self.dhw_tanks[esdl_id] = HeatBuffer(dhw_capacitance)
-            print('dhw_capacitance', dhw_capacitance)
+            LOGGER.debug('dhw_capacitance', dhw_capacitance)
 
             # Set Houses
             capacities = {'C_in': building_description['C_in'], 'C_out': building_description['C_out']}
