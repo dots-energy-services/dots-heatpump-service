@@ -134,7 +134,7 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
             dhw_capacitance = self.hp_description_dicts[esdl_id]['dhw_capacitance']
             self.buffers[esdl_id] = HeatBuffer(buffer_capacitance)
             self.dhw_tanks[esdl_id] = HeatBuffer(dhw_capacitance)
-            LOGGER.debug('dhw_capacitance', dhw_capacitance)
+            LOGGER.debug(f'dhw_capacitance: {dhw_capacitance}')
 
             # Set Houses
             capacities = {'C_in': building_description['C_in'], 'C_out': building_description['C_out']}
