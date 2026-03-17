@@ -117,31 +117,25 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         self.inv_capacitance_matrices: dict[EsdlId, np.array] = {}
         self.conductance_matrices: dict[EsdlId, np.array] = {}
         self.forcing_matrices: dict[EsdlId, np.array] = {}
-
-        for esdl_id in self.simulator_configuration.esdl_ids:
-            # Initialize heat tanks and houses
-            # Get data from ESDL
-            for obj in energy_system.eAllContents():
-                if hasattr(obj, "id") and obj.id == esdl_id:
-                    hpsystem = obj
-                    if isinstance(obj.eContainer(), esdl.Building):
-                        building_description = json.loads(obj.eContainer().description)
-            self.hp_description_dicts[esdl_id] = json.loads(hpsystem.description)
-            self.hp_esdl_power[esdl_id] = hpsystem.power
-
-            # Set Tanks
-            buffer_capacitance = self.hp_description_dicts[esdl_id]['buffer_capacitance']
-            dhw_capacitance = self.hp_description_dicts[esdl_id]['dhw_capacitance']
-            self.buffers[esdl_id] = HeatBuffer(buffer_capacitance)
-            self.dhw_tanks[esdl_id] = HeatBuffer(dhw_capacitance)
-            LOGGER.debug(f'dhw_capacitance: {dhw_capacitance}')
-
-            # Set Houses
-            capacities = {'C_in': building_description['C_in'], 'C_out': building_description['C_out']}
-            resistances = {'R_exch': building_description['R_exch'], 'R_floor': building_description['R_floor'],
-                           'R_vent': building_description['R_vent'], 'R_cond': building_description['R_cond']}
-            window_area = building_description['A_glass']
-            self.houses[esdl_id] = House(capacities, resistances, window_area)
+        for obj in energy_system.eAllContents():
+            if hasattr(obj, "id") and isinstance(obj.eContainer(), esdl.Building) and obj.id in self.simulator_configuration.esdl_ids:
+                esdl_id = obj.id
+                hpsystem = obj
+                building_description = json.loads(obj.eContainer().description)
+                self.hp_description_dicts[esdl_id] = json.loads(hpsystem.description)
+                self.hp_esdl_power[esdl_id] = hpsystem.power
+                # Set Tanks
+                buffer_capacitance = self.hp_description_dicts[esdl_id]['buffer_capacitance']
+                dhw_capacitance = self.hp_description_dicts[esdl_id]['dhw_capacitance']
+                self.buffers[esdl_id] = HeatBuffer(buffer_capacitance)
+                self.dhw_tanks[esdl_id] = HeatBuffer(dhw_capacitance)
+                LOGGER.debug(f'dhw_capacitance: {dhw_capacitance}')
+                # Set Houses
+                capacities = {'C_in': building_description['C_in'], 'C_out': building_description['C_out']}
+                resistances = {'R_exch': building_description['R_exch'], 'R_floor': building_description['R_floor'],
+                               'R_vent': building_description['R_vent'], 'R_cond': building_description['R_cond']}
+                window_area = building_description['A_glass']
+                self.houses[esdl_id] = House(capacities, resistances, window_area)
 
 
 
