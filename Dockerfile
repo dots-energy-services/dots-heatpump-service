@@ -9,7 +9,7 @@ COPY src/heatpumpservice ./src/heatpumpservice
 COPY pyproject.toml ./
 COPY README.md ./
 COPY requirements.txt ./
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt --extra-index-url https://test.pypi.org/simple/
 RUN pip install ./
 
-ENTRYPOINT python3 src/heatpumpservice/heatpump_service.py
+ENTRYPOINT ["python3", "src/heatpumpservice/heatpump_service.py"]
