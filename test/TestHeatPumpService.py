@@ -5,6 +5,7 @@ from dots_infrastructure.DataClasses import SimulatorConfiguration, TimeStepInfo
 from dots_infrastructure.test_infra.InfluxDBMock import InfluxDBMock
 import helics as h
 from esdl.esdl_handler import EnergySystemHandler
+from pathlib import Path
 
 from dots_infrastructure import CalculationServiceHelperFunctions
 
@@ -26,7 +27,7 @@ class Test(unittest.TestCase):
     def setUp(self):
         CalculationServiceHelperFunctions.get_simulator_configuration_from_environment = simulator_environment_e_connection
         esh = EnergySystemHandler()
-        esh.load_file('test/test.esdl')
+        esh.load_file(str(Path(__file__).parent / 'test.esdl'))
         energy_system = esh.get_energy_system()
         self.energy_system = energy_system
 
