@@ -39,3 +39,4 @@ Updates the temperature values for house, buffer and dhw tank temperatures depen
 |[HeatPump](https://energytransition.github.io/#router/doc-content/687474703a2f2f7777772e746e6f2e6e6c2f6573646c/HeatPump.html)|Details on the HeatPump esdl type|
 |[Space heating demand profiles of districts considering temporal dispersion of thermostat settings in individual buildings](https://doi.org/10.1016/j.buildenv.2022.109839)|Publication describing the space heating demands for a house utilized in this model's calculations.|
 |[Modeling a Domestic All-Electric Air-Water Heat-Pump System for Discrete-Time Simulations](https://doi.org/10.1109/UPEC55022.2022.9917983)|Publication describing the heat pump model.|
+|[TNO 2022 P10336](https://publications.tno.nl/publication/34639576/DVlZDB/TNO-2022-P10336.pdf)|Details on building thermal model assumptions and empirical parameterization adopted in this implementation|
