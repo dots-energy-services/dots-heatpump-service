@@ -292,15 +292,15 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         buffer = self.buffers[esdl_id]
         house = self.houses[esdl_id]
 
-        LOGGER.debug(f"esdl id: {esdl_id}")
-        LOGGER.debug(f"dhw temperature before: {dhw_tank.temperature}")
-        LOGGER.debug(f"buffer temperature before: {buffer.temperature}")
-        LOGGER.debug(f"house temperatures before: {house.temperatures}")
+        LOGGER.info(f"esdl id: {esdl_id}")
+        LOGGER.info(f"dhw temperature before: {dhw_tank.temperature}")
+        LOGGER.info(f"buffer temperature before: {buffer.temperature}")
+        LOGGER.info(f"house temperatures before: {house.temperatures}")
 
-        LOGGER.debug(f"heat to dhw: {heat_to_dhw}")
-        LOGGER.debug(f"heat to dhw tank: {heat_to_dhw_tank}")
-        LOGGER.debug(f"heat to house: {heat_to_house}")
-        LOGGER.debug(f"heat to buffer: {heat_to_buffer}")
+        LOGGER.info(f"heat to dhw: {heat_to_dhw}")
+        LOGGER.info(f"heat to dhw tank: {heat_to_dhw_tank}")
+        LOGGER.info(f"heat to house: {heat_to_house}")
+        LOGGER.info(f"heat to buffer: {heat_to_buffer}")
 
         # Update temperatures
         dhw_tank.update_temperature(self.heatpump_period_in_seconds,
