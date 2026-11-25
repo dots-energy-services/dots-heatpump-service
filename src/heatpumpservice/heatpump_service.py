@@ -330,6 +330,12 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         upper_bound_buffer = self.hp_description_dicts[esdl_id]['buffer_temp_max']
         lower_bound_house = self.hp_description_dicts[esdl_id]['house_temp_min']
 
+        LOGGER.info(f"lower_bound_dhw_tank: {lower_bound_dhw_tank}")
+        LOGGER.info(f"upper_bound_dhw_tank: {upper_bound_dhw_tank}")
+        LOGGER.info(f"lower_bound_buffer: {lower_bound_buffer}")
+        LOGGER.info(f"upper_bound_buffer: {upper_bound_buffer}")
+        LOGGER.info(f"lower_bound_house: {lower_bound_house}")
+
         # Correct errors up till error eps
         eps = 1.0e-4
         if abs(dhw_tank_temperature - lower_bound_dhw_tank) < eps:
