@@ -11,10 +11,13 @@ from dots_infrastructure.CalculationServiceHelperFunctions import get_vector_par
 
 import json
 import numpy as np
+import math
 
 from heatpumpservice.thermalsystems import HeatBuffer, House
 
-
+def celsius_to_kelvin(temperature_c):
+    """Convert a temperature from Celsius to Kelvin."""
+    return temperature_c + 273.15 if temperature_c is not None else None
 
 class CalculationServiceHeatPump(HelicsSimulationExecutor):
 
@@ -105,6 +108,28 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
 
         calculation_information_update = HelicsCalculationInformation(heatpump_update_period_in_seconds, 0, False, False, True, "update_temperatures", subscriptions_values, [], self.update_temperatures)
         self.add_calculation(calculation_information_update)
+        
+    def parse_building_data(self, building, building_features, building_info):
+        """Extract relevant building and building information properties."""
+        building_data = {}
+        # Building-level properties
+        for feature in building.eClass.eAllStructuralFeatures():
+            if feature.name in building_features:
+                value = getattr(building, feature.name)
+                if value not in [None, 0, 0.0]:
+                    building_data[feature.name] = value
+        # BuildingInformation properties
+        for bi in building.buildinginformation:
+            for field in building_info:
+                value = getattr(bi, field, None)
+                if value not in [None, 0, 0.0]:
+                    building_data[field] = value
+        # Derived properties
+        building_data["roofArea"] = (
+                building_data.get("slantedRoofArea", 0)
+                + building_data.get("flatRoofArea", 0)
+        )
+        return building_data
 
     def init_calculation_service(self, energy_system: esdl.EnergySystem):
         self.hp_description_dicts: dict[EsdlId, dict[str, float]] = {}
@@ -117,24 +142,87 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         self.inv_capacitance_matrices: dict[EsdlId, np.array] = {}
         self.conductance_matrices: dict[EsdlId, np.array] = {}
         self.forcing_matrices: dict[EsdlId, np.array] = {}
+
+        building_features   = ["buildingYear", "floorArea", "numberOfFloors", "surfaceArea"]
+        building_info       = ["slantedRoofArea", "wallArea", "flatRoofArea", "windowArea", "height", "rcWall", "rcRoof",
+                                "rcFloor", "uWindow", "doorArea", "uDoor"]
+
+        # Constants house heat calculations
+        U_occupants_appliances_W_per_m2        = 5     # [W/m2] The heat from occupants and appliances is included as an average value, adopted from the TNO space heating demand model (TNO 2022 P10336, Section 3.3). See README for details and references.
+        heatcapacity_air_J_per_m3              = 1230  # [J/m3]
+        density_water_kg_per_m3                = 1000  # [kg/m3]
+        specific_heat_water_J_per_kg_per_K     = 4183  # [J/(kg K)]
+        
         for obj in energy_system.eAllContents():
             if hasattr(obj, "id") and isinstance(obj.eContainer(), esdl.Building) and obj.id in self.simulator_configuration.esdl_ids:
                 esdl_id = obj.id
                 hpsystem = obj
-                building_description = json.loads(obj.eContainer().description)
-                self.hp_description_dicts[esdl_id] = json.loads(hpsystem.description)
+                building = obj.eContainer()
+
+                self.hp_description_dicts[esdl_id] = {}
                 self.hp_esdl_power[esdl_id] = hpsystem.power
                 # Set Tanks
-                buffer_capacitance = self.hp_description_dicts[esdl_id]['buffer_capacitance']
-                dhw_capacitance = self.hp_description_dicts[esdl_id]['dhw_capacitance']
+                for asset in building.asset:
+                    if isinstance(asset, esdl.WaterBuffer):
+                        if "sh_buffer" in asset.name:
+                            buffer_volume = asset.volume
+                            buffer_capacitance = (buffer_volume * density_water_kg_per_m3 * specific_heat_water_J_per_kg_per_K)
+                            self.hp_description_dicts[esdl_id]['buffer_temp_min'] = celsius_to_kelvin(asset.minStorageTemperature)
+                            self.hp_description_dicts[esdl_id]['buffer_temp_max'] = celsius_to_kelvin(asset.maxStorageTemperature)
+                            heating_demand = next(
+                                connected_to.eContainer()
+                                for port in asset.port
+                                for connected_to in port.connectedTo
+                                if isinstance(connected_to.eContainer(), esdl.HeatingDemand)
+                            )
+                            self.hp_description_dicts[esdl_id]['house_temp_min'] = celsius_to_kelvin(heating_demand.minTemperature)
+                            self.hp_description_dicts[esdl_id]['house_temp_max'] = celsius_to_kelvin(heating_demand.maxTemperature)
+                        elif "hw_buffer" in asset.name:
+                            dhw_volume = asset.volume
+                            dhw_capacitance = (dhw_volume * density_water_kg_per_m3 * specific_heat_water_J_per_kg_per_K)
+                            self.hp_description_dicts[esdl_id]['dhw_temp_min'] = celsius_to_kelvin(asset.minStorageTemperature)
+                            self.hp_description_dicts[esdl_id]['dhw_temp_max'] = celsius_to_kelvin(asset.maxStorageTemperature)
+                            heating_demand = next(
+                                connected_to.eContainer()
+                                for port in asset.port
+                                for connected_to in port.connectedTo
+                                if isinstance(connected_to.eContainer(), esdl.HeatingDemand)
+                            )
+                            self.hp_description_dicts[esdl_id]['dhw_temp_max'] = celsius_to_kelvin(heating_demand.maxTemperature)
+                            self.hp_description_dicts[esdl_id]['dhw_temp_0'] = celsius_to_kelvin(heating_demand.minTemperature)
+
                 self.buffers[esdl_id] = HeatBuffer(buffer_capacitance)
                 self.dhw_tanks[esdl_id] = HeatBuffer(dhw_capacitance)
                 LOGGER.debug(f'dhw_capacitance: {dhw_capacitance}')
                 # Set Houses
-                capacities = {'C_in': building_description['C_in'], 'C_out': building_description['C_out']}
-                resistances = {'R_exch': building_description['R_exch'], 'R_floor': building_description['R_floor'],
-                               'R_vent': building_description['R_vent'], 'R_cond': building_description['R_cond']}
-                window_area = building_description['A_glass']
+                building_data = self.parse_building_data(building, building_features, building_info)
+                if building_data["buildingYear"] <= 1967:
+                    qv10 = 4.0                                                                                          # Air leakage rate at 10 Pa [dm³/s/m²] adopted from the TNO space heating demand model (TNO 2022 P10336, Section 3.3). See README for details and references.
+                else:
+                    qv10 = 0.3 + 3.7 * math.exp((1967 - building_data["buildingYear"]) / 16)                            # Air leakage rate at 10 Pa [dm³/s/m²] adopted from the TNO space heating demand model (TNO 2022 P10336, Section 3.3). See README for details and references.
+                qv1 = qv10 * (10 ** -0.7)
+
+                uservolume = building_data["surfaceArea"] * (building_data["height"] / building_data["numberOfFloors"])
+                inner_thermal_mass_ratio = 0.22                                                                         # Fraction of total building heat capacity assigned to the inner thermal mass adopted from the TNO space heating demand model (TNO 2022 P10336, Section 3.3). See README for details and references.
+                C_in = (0.0784 * uservolume + 1.97) * 1e6                                                               # Inner thermal mass heat capacity [J/K] adopted from the TNO space heating demand model (TNO 2022 P10336, Section 3.3). See README for details and references.
+                C_out = (C_in / inner_thermal_mass_ratio) * (1 - inner_thermal_mass_ratio)                              # Outer thermal mass heat capacity [J/K] adopted from the TNO space heating demand model (TNO 2022 P10336, Section 3.3). See README for details and references.
+
+                UA_vent     = heatcapacity_air_J_per_m3 * (qv1 * 10 ** -3) * building_data["surfaceArea"]
+                UA_exch     = U_occupants_appliances_W_per_m2 * building_data["surfaceArea"]
+                UA_floor    = building_data["floorArea"] / building_data["rcFloor"]
+                UA_transm   = (building_data["wallArea"] / building_data["rcWall"]) + (
+                                (building_data["roofArea"]) / building_data["rcRoof"]) + (
+                                    building_data["windowArea"] * building_data["uWindow"]) + (
+                                    building_data["doorArea"] * building_data["uDoor"])
+                R_vent  = 1 / UA_vent
+                R_exch  = 1 / UA_exch
+                R_floor = 1 / UA_floor
+                R_cond  = 1 / UA_transm - 1 / UA_exch
+
+                capacities = {'C_in': C_in, 'C_out': C_out}
+                resistances = {'R_exch': R_exch, 'R_floor': R_floor,
+                               'R_vent': R_vent, 'R_cond': R_cond}
+                window_area = building_data['windowArea']
                 self.houses[esdl_id] = House(capacities, resistances, window_area)
 
 
@@ -160,8 +248,8 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
             hp_description_dict = self.hp_description_dicts[esdl_id]
 
             dhw_tank.set_initial_temperature(hp_description_dict['dhw_temp_0'])
-            buffer.set_initial_temperature(hp_description_dict['buffer_temp_0'])
-            house.set_initial_temperatures(hp_description_dict['house_temp_0'],
+            buffer.set_initial_temperature(hp_description_dict['buffer_temp_max'])
+            house.set_initial_temperatures(hp_description_dict['house_temp_min'],
                                            self.hp_esdl_power[esdl_id],
                                            current_air_temperature,
                                            current_soil_temperature,
@@ -204,15 +292,15 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         buffer = self.buffers[esdl_id]
         house = self.houses[esdl_id]
 
-        LOGGER.debug(f"esdl id: {esdl_id}")
-        LOGGER.debug(f"dhw temperature before: {dhw_tank.temperature}")
-        LOGGER.debug(f"buffer temperature before: {buffer.temperature}")
-        LOGGER.debug(f"house temperatures before: {house.temperatures}")
+        LOGGER.info(f"esdl id: {esdl_id}")
+        LOGGER.info(f"dhw temperature before: {dhw_tank.temperature}")
+        LOGGER.info(f"buffer temperature before: {buffer.temperature}")
+        LOGGER.info(f"house temperatures before: {house.temperatures}")
 
-        LOGGER.debug(f"heat to dhw: {heat_to_dhw}")
-        LOGGER.debug(f"heat to dhw tank: {heat_to_dhw_tank}")
-        LOGGER.debug(f"heat to house: {heat_to_house}")
-        LOGGER.debug(f"heat to buffer: {heat_to_buffer}")
+        LOGGER.info(f"heat to dhw: {heat_to_dhw}")
+        LOGGER.info(f"heat to dhw tank: {heat_to_dhw_tank}")
+        LOGGER.info(f"heat to house: {heat_to_house}")
+        LOGGER.info(f"heat to buffer: {heat_to_buffer}")
 
         # Update temperatures
         dhw_tank.update_temperature(self.heatpump_period_in_seconds,
@@ -242,12 +330,18 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         upper_bound_buffer = self.hp_description_dicts[esdl_id]['buffer_temp_max']
         lower_bound_house = self.hp_description_dicts[esdl_id]['house_temp_min']
 
+        LOGGER.info(f"lower_bound_dhw_tank: {lower_bound_dhw_tank}")
+        LOGGER.info(f"upper_bound_dhw_tank: {upper_bound_dhw_tank}")
+        LOGGER.info(f"lower_bound_buffer: {lower_bound_buffer}")
+        LOGGER.info(f"upper_bound_buffer: {upper_bound_buffer}")
+        LOGGER.info(f"lower_bound_house: {lower_bound_house}")
+
         # Correct errors up till error eps
         eps = 1.0e-4
         if abs(dhw_tank_temperature - lower_bound_dhw_tank) < eps:
             dhw_tank_temperature = lower_bound_dhw_tank + eps
         if abs(dhw_tank_temperature - upper_bound_dhw_tank) < eps:
-            dhw_tank_temperature = upper_bound_buffer - eps
+            dhw_tank_temperature = dhw_tank_temperature - eps
         if abs(buffer_temperature - lower_bound_buffer) < eps:
             buffer_temperature = lower_bound_buffer + eps
         if abs(buffer_temperature - upper_bound_buffer) < eps:
