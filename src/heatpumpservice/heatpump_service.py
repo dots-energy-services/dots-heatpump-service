@@ -341,7 +341,7 @@ class CalculationServiceHeatPump(HelicsSimulationExecutor):
         if abs(dhw_tank_temperature - lower_bound_dhw_tank) < eps:
             dhw_tank_temperature = lower_bound_dhw_tank + eps
         if abs(dhw_tank_temperature - upper_bound_dhw_tank) < eps:
-            dhw_tank_temperature = upper_bound_buffer - eps
+            dhw_tank_temperature = dhw_tank_temperature - eps
         if abs(buffer_temperature - lower_bound_buffer) < eps:
             buffer_temperature = lower_bound_buffer + eps
         if abs(buffer_temperature - upper_bound_buffer) < eps:
